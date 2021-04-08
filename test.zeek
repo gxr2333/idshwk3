@@ -1,21 +1,22 @@
-global ip_list: table[addr] of set[string];
-event http_ua(c: connection, name: string, value: string)
-{
-	local ip :addr =c$id$orig_h;
-	if(name=="USER-AGENT")
-	{
-		if(ip !in ip_list)
-			ip_list[ip]=set(to_lower(value));
-		else
-			add ip_list[ip][to_lower(value)];
-	}
+global p :table[addr] of set[string]= {};
+
+event http_header(c: connection, is_orig: bool, name :string, value :string){
+  local Addr :addr=c$id$orig_h;
+  local UserAgent :string=to_lower(value);
+  if(name=="USER-AGENT"){
+    if(Addr in p){
+      add p[Addr][UserAgent];
+    }
+    else{
+      p[Addr]=set(UserAgent);
+    }
+  }
 }
- 
-event zeek_done()
-{	
-	for (sourceip in ip_list)
-	{
-		if(|ip_list[sourceip]|>3)
-			print (fmt("%s is a proxy",sourceip));
-	}
+
+event zeek_done(){
+  local s :string=" is a proxy";
+  for(i in p){
+    if((|p[i]|)>=3)
+      print i,s;
+  }
 }
